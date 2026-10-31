@@ -3,8 +3,8 @@ import { state } from './state.js';
 import { computeOpenness, computePinch, palmCenter, smoothLandmarks, labelFor, SignalSmoother } from './gestureMath.js';
 
 // 全部走本地资源：避免 storage.googleapis.com（国内网络常被墙）与 CDN 不稳定的问题
-const WASM_BASE = '/assets/wasm';
-const MODEL_URL = '/assets/models/hand_landmarker.task';
+const WASM_BASE = new URL('../assets/wasm/', import.meta.url).href;
+const MODEL_URL = new URL('../assets/models/hand_landmarker.task', import.meta.url).href;
 
 export function createGestureController(videoEl) {
   let landmarker = null;
@@ -17,7 +17,8 @@ export function createGestureController(videoEl) {
   const smoother = new SignalSmoother();
 
   async function doInit() {
-    const { FilesetResolver, HandLandmarker } = await import('/assets/vision_bundle.mjs');
+    const { FilesetResolver, HandLandmarker } =
+  await import(new URL('../assets/vision_bundle.mjs', import.meta.url).href);
     const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
     const opts = {
       runningMode: 'VIDEO',
