@@ -31,6 +31,11 @@ export function initUI(handlers) {
     btnMouse: $('btn-mouse'),
     btnAudio: $('btn-audio'),
     btnEnd: $('btn-end'),
+    btnColorMode: $('btn-colormode'),
+    colorPicker: $('color-picker'),
+    colorDots: Array.from(document.querySelectorAll('.color-dot')),
+    shapeHint: $('shape-hint'),
+    debugPanel: $('debug-panel'),
     btnScreenshot: $('btn-screenshot'),
     btnRestart: $('btn-restart'),
   };
@@ -51,9 +56,39 @@ export function initUI(handlers) {
   };
 
   const setStatus = (t) => { els.status.textContent = t; };
-  const setGesture = (t) => { els.gestureLabel.textContent = t; };
-  const setBloom = (t) => { els.bloomValue.textContent = t; };
+  const setDebug = (t) => { els.debugPanel.textContent = t; };
+  // 节流：仅在内容变化时写 DOM，避免每帧刷新
+  let lastGestureText = '';
+  let lastBloomText = '';
+  const setGesture = (t) => { if (t !== lastGestureText) { lastGestureText = t; els.gestureLabel.textContent = t; } };
+  const setBloom = (t) => { if (t !== lastBloomText) { lastBloomText = t; els.bloomValue.textContent = t; } };
   const showCamera = (on) => { els.cameraWrap.classList.toggle('hidden', !on); };
+
+  // 幻彩模式 UI 同步：显示/隐藏颜色按钮、点亮当前颜色
+  const syncColorUI = () => {
+    els.colorPicker.classList.toggle('hidden', !state.colorMode);
+    els.btnColorMode.classList.toggle('active', state.colorMode);
+    els.colorDots.forEach((b) => {
+      b.classList.toggle('active', state.colorMode && b.dataset.color === state.colorTarget);
+    });
+  };
+
+  // 手势花形提示：高亮当前花形
+  const shapeRows = Array.from(els.shapeHint.querySelectorAll('.shape-hint-row[data-shape]'));
+  const syncShapeHint = (shape) => {
+    shapeRows.forEach((row) => row.classList.toggle('active', row.dataset.shape === shape));
+  };
+
+  // 花形切换时轻量浮层提示（淡入淡出）
+  const shapeFloat = $('shape-float');
+  let shapeFloatTimer = null;
+  const flashShapeName = (name) => {
+    if (!shapeFloat) return;
+    shapeFloat.textContent = name;
+    shapeFloat.classList.add('show');
+    clearTimeout(shapeFloatTimer);
+    shapeFloatTimer = setTimeout(() => shapeFloat.classList.remove('show'), 1100);
+  };
 
   const drawCameraOverlay = (hands) => {
     const c = els.overlay;
@@ -94,10 +129,12 @@ export function initUI(handlers) {
   els.rangeIntensity.addEventListener('input', (e) => handlers.onIntensity(parseFloat(e.target.value)));
   els.btnReset.addEventListener('click', () => handlers.onReset());
   els.btnMouse.addEventListener('click', () => handlers.onToggleMouse());
+  els.btnColorMode.addEventListener('click', () => handlers.onColorMode());
+  els.colorDots.forEach((b) => b.addEventListener('click', () => handlers.onColorPick(b.dataset.color)));
   els.btnAudio.addEventListener('click', () => handlers.onToggleAudio());
   els.btnEnd.addEventListener('click', () => handlers.onEnd());
   els.btnScreenshot.addEventListener('click', () => handlers.onScreenshot());
   els.btnRestart.addEventListener('click', () => handlers.onRestart());
 
-  return { els, toast, showView, setStatus, setGesture, setBloom, showCamera, drawCameraOverlay };
+  return { els, toast, showView, setStatus, setDebug, setGesture, setBloom, showCamera, drawCameraOverlay, syncColorUI, syncShapeHint, flashShapeName };
 }

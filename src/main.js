@@ -63,11 +63,14 @@ async function enableCamera() {
 }
 
 async function ensureRecognition() {
+  state.set({ recogStatus: 'loading', recogError: '' });
   try {
     await gesture.init();
+    state.set({ recogStatus: 'ready' });
     ui.setStatus('就绪 · 手掌张开 = 绽放');
     return true;
   } catch (e) {
+    state.set({ recogStatus: 'error', recogError: e.message || String(e) });
     console.error(e);
     ui.toast('手部识别加载失败：' + e.message);
     ui.setStatus('⚠️ 识别：' + e.message);
@@ -170,6 +173,23 @@ function onRestart() {
   ui.setStatus('就绪 · 手掌张开 = 绽放');
 }
 
+// ---- 幻彩绽放模式 ----
+function onColorMode() {
+  const on = !state.colorMode;
+  let name = state.colorTarget;
+  if (!CONFIG.colors[name]) name = 'red';
+  const c = CONFIG.colors[name];
+  state.set({ colorMode: on, colorTarget: name, hueTarget: c.hue, colorMixed: !!c.mixed });
+  ui.syncColorUI();
+}
+
+function onColorPick(name) {
+  const c = CONFIG.colors[name];
+  if (!c) return;
+  state.set({ colorTarget: name, hueTarget: c.hue, colorMixed: !!c.mixed });
+  ui.syncColorUI();
+}
+
 ui = initUI({
   onStart: startExperience,
   onToggleCamera: toggleCamera,
@@ -177,6 +197,8 @@ ui = initUI({
   onIntensity: (v) => state.set({ intensity: v }),
   onReset,
   onToggleMouse: toggleMouse,
+  onColorMode,
+  onColorPick,
   onToggleAudio: toggleAudio,
   onEnd,
   onScreenshot,
@@ -203,6 +225,10 @@ let elapsed = 0;
 let quality = 1;
 let fpsAccum = 0;
 let fpsFrames = 0;
+let lastGestureColor = 'none';
+let lastShape = 'none';
+let debugAccum = 0;
+const shapeCur = { sx: 1, sy: 1, dy: 0, twist: 0, layer: 0 };
 
 function loop(now) {
   requestAnimationFrame(loop);
@@ -259,8 +285,33 @@ function loop(now) {
   if (state.specialBloom > 0.001) state.specialBloom *= Math.exp(-dt * 1.1);
   else state.specialBloom = 0;
 
+  // 花形手势需要花朵展开才能看到形状 → 强制展开
+  if (state.view === 'experience' && state.shapeTarget !== 'none') {
+    state.targetBloom = Math.max(state.targetBloom, 0.85);
+  }
+
   const target = Math.min(1, state.targetBloom + state.specialBloom * 0.35);
   state.bloom += (target - state.bloom) * Math.min(1, dt * 8.5);
+
+  // 颜色仅由界面按钮控制，手势不改变颜色（避免与花形手势冲突）
+  // （state.gestureColor 保留用于内部状态，不参与颜色决策）
+  // 原版↔幻彩 平滑过渡
+  const mixTarget = state.colorMode ? 1 : 0;
+  state.colorMix += (mixTarget - state.colorMix) * Math.min(1, dt * 4);
+  // 色相沿最短路径平滑过渡
+  let dh = state.hueTarget - state.hueCurrent;
+  if (dh > 0.5) dh -= 1;
+  else if (dh < -0.5) dh += 1;
+  state.hueCurrent = (state.hueCurrent + dh * Math.min(1, dt * 4) + 1) % 1;
+
+  // 手势花形：平滑过渡到目标形状参数（蝶翼/尖瓣/多层/螺旋）
+  const sp = CONFIG.shapes[state.shapeTarget] || CONFIG.shapes.none;
+  const sk = Math.min(1, dt * 3);
+  shapeCur.sx += (sp.sx - shapeCur.sx) * sk;
+  shapeCur.sy += (sp.sy - shapeCur.sy) * sk;
+  shapeCur.dy += (sp.dy - shapeCur.dy) * sk;
+  shapeCur.twist += (sp.twist - shapeCur.twist) * sk;
+  shapeCur.layer += (sp.layer - shapeCur.layer) * sk;
 
   // 3. 更新各子系统
   const pointScale = sceneApi.getPointScale();
@@ -273,6 +324,10 @@ function loop(now) {
     handForce,
     intensity: state.intensity * quality,
     pointScale,
+    hue: state.hueCurrent,
+    colorMix: state.colorMix,
+    colorMode: state.colorMixed ? 1 : 0,
+    shape: shapeCur,
   });
   effects.update({ time: elapsed, bloom: state.bloom, pointScale });
   audio.update();
@@ -294,6 +349,31 @@ function loop(now) {
   ui.drawCameraOverlay(gesture.getLandmarks());
   ui.setGesture(state.gestureLabel || '—');
   ui.setBloom(Math.round(state.bloom * 100) + '%');
+  // 手势花形提示高亮（仅在切换时更新 DOM）+ 淡入名称浮层
+  if (state.shapeTarget !== lastShape) {
+    lastShape = state.shapeTarget;
+    ui.syncShapeHint(state.shapeTarget);
+    const SHAPE_NAMES = { butterfly: '蝶翼花', pointed: '尖瓣百合', layered: '重瓣菊花', spiral: '螺旋玫瑰' };
+    if (SHAPE_NAMES[state.shapeTarget]) ui.flashShapeName(SHAPE_NAMES[state.shapeTarget]);
+  }
+
+  // 真实调试反馈（约 5fps 刷新，显示实际识别结果，不模拟）
+  debugAccum += dt;
+  if (debugAccum > 0.2) {
+    debugAccum = 0;
+    const recog = state.recogStatus === 'ready' ? '就绪'
+      : state.recogStatus === 'error' ? ('错误 ' + state.recogError)
+      : state.recogStatus === 'loading' ? '加载中…' : '未启动';
+    const hand = state.handActive ? ('检测到 (' + state.landmarkCount + '点)') : '未检测到';
+    ui.setDebug(
+      '识别   ' + recog + '\n' +
+      '手     ' + hand + '\n' +
+      '原始手势 ' + state.gestureRaw + '\n' +
+      '原始花形 ' + state.shapeRaw + '\n' +
+      '当前花形 ' + state.shapeTarget + '\n' +
+      '绽放   ' + Math.round(state.bloom * 100) + '%'
+    );
+  }
 
   // 5. 渲染
   sceneApi.composer.render();

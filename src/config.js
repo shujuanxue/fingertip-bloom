@@ -40,6 +40,24 @@ export const CONFIG = {
   handForceRadius: 2.6,        // 手部位置作用半径（世界单位）
   handForceStrength: 1.4,      // 局部吸引/排斥强度
 
+  // ---- 幻彩模式颜色（色相 0..1，作用于整朵花）----
+  colors: {
+    red:   { hue: 0.00, label: '红', css: '#ff3b5c' },
+    gold:  { hue: 0.12, label: '金', css: '#ffc94d' },
+    green: { hue: 0.33, label: '绿', css: '#4dff9e' },
+    blue:  { hue: 0.58, label: '蓝', css: '#4daaff' },
+    mixed: { hue: 0.00, label: '幻彩', mixed: true },  // 混合多色模式
+  },
+
+  // ---- 手势花形（粒子位置变形参数，平滑过渡；sx/sy=各向异性缩放, dy=上移, twist=螺旋, layer=多层）----
+  shapes: {
+    none:      { sx: 1.00, sy: 1.00, dy: 0.0,  twist: 0.0, layer: 0.00 },
+    butterfly: { sx: 1.45, sy: 0.68, dy: -0.2, twist: 0.0, layer: 0.00 }, // V字：蝶翼状向两侧舒展
+    pointed:   { sx: 0.60, sy: 1.50, dy: 0.9,  twist: 0.0, layer: 0.00 }, // 仅食指：向上聚拢成尖瓣
+    layered:   { sx: 1.05, sy: 1.05, dy: 0.0,  twist: 0.0, layer: 0.35 }, // 三指：多层层次
+    spiral:    { sx: 1.00, sy: 1.00, dy: 0.0,  twist: 3.2, layer: 0.00 }, // OK：旋绕螺旋
+  },
+
   // ---- 星尘背景 ----
   starCount: 260,
 };

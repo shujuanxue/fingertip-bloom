@@ -41,6 +41,60 @@ export function computePinch(landmarks) {
   return clamp01(d / 2.2);
 }
 
+// 单指是否伸展：指尖相对掌指关节向外伸展的程度（阈值经实际手型校准）
+function fingerExtended(lm, tipIdx, mcpIdx, palmScale) {
+  const dTip = dist(lm[tipIdx], lm[WRIST]) / palmScale;
+  const dMcp = dist(lm[mcpIdx], lm[WRIST]) / palmScale;
+  return dTip - dMcp > 0.4;
+}
+
+/**
+ * 手势 → 颜色映射（用于幻彩模式）：
+ * 五指张开=绿 / 食指+中指=蓝 / 拇指食指捏合=金 / 握拳=红
+ * 返回 'green' | 'blue' | 'gold' | 'red' | 'none'
+ */
+export function classifyGesture(lm) {
+  if (!lm || lm.length < 21) return 'none';
+  const palmScale = dist(lm[WRIST], lm[9]) || 1e-4;
+  const idxExt = fingerExtended(lm, 8, 5, palmScale);
+  const midExt = fingerExtended(lm, 12, 9, palmScale);
+  const ringExt = fingerExtended(lm, 16, 13, palmScale);
+  const pinkyExt = fingerExtended(lm, 20, 17, palmScale);
+  const count = (idxExt ? 1 : 0) + (midExt ? 1 : 0) + (ringExt ? 1 : 0) + (pinkyExt ? 1 : 0);
+  const pinchD = dist(lm[THUMB_TIP], lm[8]) / palmScale;
+
+  if (count >= 4) return 'green';                                // 五指张开
+  if (idxExt && midExt && !ringExt && !pinkyExt) return 'blue';  // 食指+中指
+  if (pinchD < 0.6 && idxExt && count <= 2) return 'gold';       // 拇指食指捏合
+  if (count <= 0) return 'red';                                  // 握拳
+  return 'none';
+}
+
+/**
+ * 花形手势 → 形状（用于花朵开放时的形态变化，不改原开合/颜色）：
+ * V字(食+中分开)=蝶翼 / 仅食指=尖瓣上聚 / 三指=多层 / OK(拇指食指圈+三指伸)=螺旋
+ */
+export function classifyShape(lm) {
+  if (!lm || lm.length < 21) return 'none';
+  const scale = dist(lm[WRIST], lm[9]) || 1e-4;
+  const idx = fingerExtended(lm, 8, 5, scale);
+  const mid = fingerExtended(lm, 12, 9, scale);
+  const ring = fingerExtended(lm, 16, 13, scale);
+  const pinky = fingerExtended(lm, 20, 17, scale);
+  const pinchD = dist(lm[THUMB_TIP], lm[8]) / scale;   // 拇指-食指指尖距离
+  const pinchClose = pinchD < 0.55;                     // 拇指食指接触
+
+  // OK：拇指食指指尖接触(捏圈) + 中/无名/小指伸出 —— 用“指尖接触”作为独立几何条件
+  if (pinchClose && mid && ring && pinky) return 'spiral';
+  // 三指：食指+中指+无名指伸出，小指收拢，且拇指食指不接触
+  if (idx && mid && ring && !pinky && !pinchClose) return 'layered';
+  // 仅食指 → 尖瓣百合
+  if (idx && !mid && !ring && !pinky) return 'pointed';
+  // 仅中指 → 蝶翼花
+  if (!idx && mid && !ring && !pinky) return 'butterfly';
+  return 'none';
+}
+
 // 掌心中心（腕部 + 四个掌指关节的均值）
 export function palmCenter(landmarks) {
   const idx = [0, 5, 9, 13, 17];

@@ -124,6 +124,21 @@ html, body {
 .ctrl.active { background: rgba(255, 77, 125, 0.28); border-color: var(--pink); color: #fff; }
 .ctrl input[type="range"] { width: 74px; vertical-align: middle; accent-color: var(--pink); cursor: pointer; }
 
+/* ---------- 幻彩模式颜色选择 ---------- */
+.color-picker { display: flex; gap: 8px; align-items: center; padding: 0 2px; }
+.color-dot {
+  width: 24px; height: 24px; border-radius: 50%; cursor: pointer; flex: 0 0 auto;
+  border: 2px solid rgba(255, 255, 255, 0.3); padding: 0;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.color-dot[data-color="red"]   { background: radial-gradient(circle at 35% 30%, #ff9fb0, #ff3b5c); }
+.color-dot[data-color="gold"]  { background: radial-gradient(circle at 35% 30%, #ffe9a8, #ffc94d); }
+.color-dot[data-color="blue"]  { background: radial-gradient(circle at 35% 30%, #a9d6ff, #4daaff); }
+.color-dot[data-color="green"] { background: radial-gradient(circle at 35% 30%, #b6ffd4, #4dff9e); }
+.color-dot[data-color="mixed"] { background: conic-gradient(#ff3b5c, #ffc94d, #4dff9e, #4daaff, #b08cff, #ff3b5c); }
+.color-dot:hover { transform: scale(1.12); }
+.color-dot.active { transform: scale(1.18); border-color: #fff; box-shadow: 0 0 14px rgba(255, 255, 255, 0.75); }
+
 /* ---------- 结束页 ---------- */
 .end-inner { text-align: center; padding: 0 24px; }
 .end-line {
@@ -147,3 +162,60 @@ html, body {
   .camera-wrap { width: 34vw; right: 12px; bottom: 78px; }
   .hud-top { top: 12px; left: 14px; right: 14px; }
 }
+
+/* ---------- 手势 · 花形 提示面板 ---------- */
+.shape-hint {
+  position: absolute; left: 22px; top: 64px;
+  padding: 12px 16px; border-radius: 14px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  font-size: 12px; letter-spacing: 0.04em; line-height: 1.95;
+  color: rgba(245, 233, 238, 0.82); pointer-events: none;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+}
+.shape-hint-title {
+  font-size: 10.5px; letter-spacing: 0.28em; text-indent: 0.02em;
+  color: var(--pink-soft); margin-bottom: 6px; opacity: 0.9;
+}
+.shape-hint-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 0 6px; margin: 0 -6px; border-radius: 6px;
+  transition: background 0.25s ease;
+}
+.shape-hint-row .sh-g { color: rgba(255, 214, 224, 0.95); white-space: nowrap; }
+.shape-hint-row .sh-s { color: var(--gold); min-width: 2.2em; text-align: right; }
+.shape-hint-row.active { background: linear-gradient(90deg, rgba(255, 77, 125, 0.22), transparent); }
+.shape-hint-row.active .sh-g { color: #fff; }
+.shape-hint-row.active .sh-s { color: #fff; text-shadow: 0 0 10px rgba(255, 77, 125, 0.9); }
+
+@media (max-width: 640px) {
+  .shape-hint { left: 12px; top: 54px; padding: 9px 12px; font-size: 11px; line-height: 1.7; }
+  .shape-hint-row { gap: 10px; }
+}
+
+/* ---------- 识别调试面板（真实反馈） ---------- */
+.debug-panel {
+  position: absolute; left: 22px; top: 272px;
+  padding: 10px 14px; border-radius: 12px;
+  background: rgba(0, 0, 0, 0.6); border: 1px solid rgba(120, 255, 170, 0.22);
+  font-family: "SFMono-Regular", Consolas, "Courier New", monospace;
+  font-size: 11px; line-height: 1.7; letter-spacing: 0.02em;
+  color: rgba(160, 255, 198, 0.95); pointer-events: none;
+  white-space: pre; min-width: 210px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+@media (max-width: 640px) {
+  .debug-panel { left: 12px; top: 238px; font-size: 10px; padding: 8px 10px; min-width: 0; }
+}
+
+/* ---------- 花形切换浮层提示 ---------- */
+.shape-float {
+  position: absolute; top: 92px; left: 50%; transform: translateX(-50%) translateY(-8px);
+  padding: 7px 22px; border-radius: 999px;
+  background: rgba(255, 77, 125, 0.16); border: 1px solid rgba(255, 179, 198, 0.32);
+  color: #ffe6ee; font-size: 13px; letter-spacing: 0.3em; text-indent: 0.3em;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  opacity: 0; pointer-events: none; white-space: nowrap;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.shape-float.show { opacity: 1; transform: translateX(-50%) translateY(0); }

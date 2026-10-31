@@ -32,7 +32,7 @@
   <!-- 主交互页 -->
   <section id="view-experience" class="view hidden">
     <header class="hud-top">
-      <div class="brand">FINGERTIP BLOOM · 指尖生花</div>
+      <div class="brand">FINGERTIP BLOOM · 指尖生花 · 花形版</div>
       <div class="status" id="status-text">初始化…</div>
     </header>
 
@@ -45,6 +45,19 @@
       </div>
     </div>
 
+    <aside id="shape-hint" class="shape-hint">
+      <div class="shape-hint-title">手势 · 花形</div>
+      <div class="shape-hint-row"><span class="sh-g">五指张开</span><span class="sh-s">绽放</span></div>
+      <div class="shape-hint-row"><span class="sh-g">握拳</span><span class="sh-s">收拢</span></div>
+      <div class="shape-hint-row" data-shape="butterfly"><span class="sh-g">仅伸中指</span><span class="sh-s">蝶翼花</span></div>
+      <div class="shape-hint-row" data-shape="pointed"><span class="sh-g">仅伸食指</span><span class="sh-s">尖瓣百合</span></div>
+      <div class="shape-hint-row" data-shape="layered"><span class="sh-g">三指伸出</span><span class="sh-s">重瓣菊花</span></div>
+      <div class="shape-hint-row" data-shape="spiral"><span class="sh-g">OK 手势</span><span class="sh-s">螺旋玫瑰</span></div>
+    </aside>
+
+    <div id="debug-panel" class="debug-panel">识别：未启动</div>
+    <div id="shape-float" class="shape-float"></div>
+
     <div class="control-bar">
       <button id="btn-camera" class="ctrl" title="开启/关闭摄像头">📷 摄像头</button>
       <button id="btn-fullscreen" class="ctrl" title="全屏模式">⛶ 全屏</button>
@@ -53,6 +66,14 @@
       </label>
       <button id="btn-reset" class="ctrl" title="重置花朵">↺ 重置</button>
       <button id="btn-mouse" class="ctrl" title="鼠标备用模式">🖱 鼠标模式</button>
+      <button id="btn-colormode" class="ctrl" title="幻彩绽放模式（按钮或手势换色）">🌈 幻彩</button>
+      <div id="color-picker" class="color-picker hidden">
+        <button class="color-dot" data-color="red" title="红色 · 热烈浪漫"></button>
+        <button class="color-dot" data-color="gold" title="金色 · 璀璨优雅"></button>
+        <button class="color-dot" data-color="blue" title="蓝色 · 梦幻神秘"></button>
+        <button class="color-dot" data-color="green" title="绿色 · 清新灵动"></button>
+        <button class="color-dot" data-color="mixed" title="幻彩混合 · 多彩梦幻"></button>
+      </div>
       <button id="btn-audio" class="ctrl" title="声音开关">🔇 声音</button>
       <button id="btn-end" class="ctrl" title="结束体验">⏻ 结束</button>
     </div>

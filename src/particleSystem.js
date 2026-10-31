@@ -23,6 +23,14 @@ export function createParticleSystem(scene, count) {
     uPointScale: { value: 300 },
     uHandPos: { value: new THREE.Vector3(0, 0, 0) },
     uHandForce: { value: 0 },
+    uHue: { value: 0 },
+    uColorMix: { value: 0 },
+    uColorMode: { value: 0 },
+    uShapeSX: { value: 1 },
+    uShapeSY: { value: 1 },
+    uShapeDY: { value: 0 },
+    uShapeTwist: { value: 0 },
+    uShapeLayer: { value: 0 },
   };
 
   const mat = new THREE.ShaderMaterial({
@@ -43,12 +51,22 @@ export function createParticleSystem(scene, count) {
     points,
     uniforms,
     count: data.count,
-    update({ bloom, time, handX = 0, handY = 0, handForce = 0, intensity = 1, pointScale = 300 }) {
+    update({ bloom, time, handX = 0, handY = 0, handForce = 0, intensity = 1, pointScale = 300, hue = 0, colorMix = 0, colorMode = 0, shape = null }) {
       uniforms.uBloom.value = bloom;
       uniforms.uTime.value = time;
       uniforms.uHandPos.value.set(handX, handY, 0);
       uniforms.uHandForce.value = handForce;
       uniforms.uPointScale.value = pointScale * intensity;
+      uniforms.uHue.value = hue;
+      uniforms.uColorMix.value = colorMix;
+      uniforms.uColorMode.value = colorMode;
+      if (shape) {
+        uniforms.uShapeSX.value = shape.sx;
+        uniforms.uShapeSY.value = shape.sy;
+        uniforms.uShapeDY.value = shape.dy;
+        uniforms.uShapeTwist.value = shape.twist;
+        uniforms.uShapeLayer.value = shape.layer;
+      }
     },
   };
 }

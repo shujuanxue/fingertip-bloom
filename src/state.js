@@ -27,6 +27,25 @@ export const state = {
 
   specialBloom: 0,        // 特殊盛放脉冲 0..1（指数衰减）
 
+  // 幻彩绽放模式
+  colorMode: false,       // 是否开启幻彩模式
+  hueTarget: 0,           // 目标色相 0..1（红=0 / 金=0.12 / 绿=0.33 / 蓝=0.58）
+  hueCurrent: 0,          // 当前平滑色相
+  colorMix: 0,            // 0=原版配色, 1=幻彩配色（平滑过渡）
+  colorTarget: 'red',     // 按钮选中的颜色名
+  colorMixed: false,      // 是否幻彩混合模式
+  gestureColor: 'none',   // 手势识别出的颜色名
+
+  // 手势花形
+  shapeTarget: 'none',    // none | butterfly | pointed | layered | spiral
+
+  // 识别调试（真实反馈，不模拟）
+  recogStatus: 'idle',    // idle | loading | ready | error
+  recogError: '',
+  landmarkCount: 0,       // 每帧返回的关键点数量（21=有效）
+  gestureRaw: 'none',     // 原始手势分类
+  shapeRaw: 'none',       // 原始花形分类
+
   on(event, fn) {
     (listeners[event] ||= []).push(fn);
     return () => {
