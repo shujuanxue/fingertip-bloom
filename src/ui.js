@@ -30,6 +30,7 @@ export function initUI(handlers) {
     btnReset: $('btn-reset'),
     btnMouse: $('btn-mouse'),
     btnAudio: $('btn-audio'),
+    btnRetry: $('btn-retry'),
     btnEnd: $('btn-end'),
     btnColorMode: $('btn-colormode'),
     colorPicker: $('color-picker'),
@@ -132,6 +133,7 @@ export function initUI(handlers) {
   els.btnColorMode.addEventListener('click', () => handlers.onColorMode());
   els.colorDots.forEach((b) => b.addEventListener('click', () => handlers.onColorPick(b.dataset.color)));
   els.btnAudio.addEventListener('click', () => handlers.onToggleAudio());
+  els.btnRetry.addEventListener('click', () => handlers.onRetryRecog());
   els.btnEnd.addEventListener('click', () => handlers.onEnd());
   els.btnScreenshot.addEventListener('click', () => handlers.onScreenshot());
   els.btnRestart.addEventListener('click', () => handlers.onRestart());

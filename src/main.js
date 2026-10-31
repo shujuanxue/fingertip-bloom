@@ -64,6 +64,7 @@ async function enableCamera() {
 
 async function ensureRecognition() {
   state.set({ recogStatus: 'loading', recogError: '' });
+  if (ui.els.btnRetry) ui.els.btnRetry.classList.add('hidden');
   try {
     await gesture.init();
     state.set({ recogStatus: 'ready' });
@@ -72,16 +73,25 @@ async function ensureRecognition() {
   } catch (e) {
     state.set({ recogStatus: 'error', recogError: e.message || String(e) });
     console.error(e);
+    if (ui.els.btnRetry) ui.els.btnRetry.classList.remove('hidden');
     ui.toast('手部识别加载失败：' + e.message);
     ui.setStatus('⚠️ 识别：' + e.message);
     return false;
   }
 }
 
+function onRetryRecog() {
+  ui.setStatus('正在重新加载识别模型…');
+  ensureRecognition();
+}
+
 async function startExperience() {
   ui.showView('experience');
-  const camOk = await enableCamera();
-  if (camOk) await ensureRecognition();
+  ui.setStatus('正在请求摄像头并加载识别模型…');
+  // 摄像头权限与模型加载并行，缩短总等待时间
+  const [camOk, recogOk] = await Promise.all([enableCamera(), ensureRecognition()]);
+  if (camOk && recogOk) ui.setStatus('就绪 · 手掌张开 = 绽放');
+  else if (camOk) ui.setStatus('⚠️ 识别加载失败 · 点「重试识别」');
 }
 
 async function toggleCamera() {
@@ -199,6 +209,7 @@ ui = initUI({
   onToggleMouse: toggleMouse,
   onColorMode,
   onColorPick,
+  onRetryRecog,
   onToggleAudio: toggleAudio,
   onEnd,
   onScreenshot,
@@ -361,13 +372,20 @@ function loop(now) {
   debugAccum += dt;
   if (debugAccum > 0.2) {
     debugAccum = 0;
-    const recog = state.recogStatus === 'ready' ? '就绪'
+    const recog = state.recogStatus === 'ready' ? ('就绪 ' + (state.recogTime ? state.recogTime.toFixed(1) + 's' : '—'))
       : state.recogStatus === 'error' ? ('错误 ' + state.recogError)
       : state.recogStatus === 'loading' ? '加载中…' : '未启动';
-    const hand = state.handActive ? ('检测到 (' + state.landmarkCount + '点)') : '未检测到';
+    const hand = state.handActive
+      ? ('检测到 ' + state.landmarkCount + '点 ' + Math.round(state.handConfidence * 100) + '%')
+      : '未检测到';
+    const fs = state.fingerStates;
+    const fingers = fs
+      ? ('拇' + (fs.thumb ? '伸' : '收') + ' 食' + (fs.index ? '伸' : '收') + ' 中' + (fs.middle ? '伸' : '收') + ' 无' + (fs.ring ? '伸' : '收') + ' 小' + (fs.pinky ? '伸' : '收'))
+      : '—';
     ui.setDebug(
       '识别   ' + recog + '\n' +
       '手     ' + hand + '\n' +
+      '手指   ' + fingers + '\n' +
       '原始手势 ' + state.gestureRaw + '\n' +
       '原始花形 ' + state.shapeRaw + '\n' +
       '当前花形 ' + state.shapeTarget + '\n' +

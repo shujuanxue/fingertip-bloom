@@ -42,9 +42,12 @@ export const state = {
   // 识别调试（真实反馈，不模拟）
   recogStatus: 'idle',    // idle | loading | ready | error
   recogError: '',
+  recogTime: 0,           // 模型初始化耗时（秒）
   landmarkCount: 0,       // 每帧返回的关键点数量（21=有效）
   gestureRaw: 'none',     // 原始手势分类
   shapeRaw: 'none',       // 原始花形分类
+  fingerStates: null,     // { thumb, index, middle, ring, pinky }
+  handConfidence: 0,      // MediaPipe 手部置信度
 
   on(event, fn) {
     (listeners[event] ||= []).push(fn);

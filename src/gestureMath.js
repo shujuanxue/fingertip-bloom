@@ -6,6 +6,7 @@ const FINGER_TIPS = [8, 12, 16, 20];   // 食/中/无名/小指 指尖
 const FINGER_MCPS = [5, 9, 13, 17];    // 对应掌指关节
 const THUMB_TIP = 4;
 const THUMB_IP = 3;
+const THUMB_MCP = 2;
 
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
@@ -41,57 +42,79 @@ export function computePinch(landmarks) {
   return clamp01(d / 2.2);
 }
 
-// 单指是否伸展：指尖相对掌指关节向外伸展的程度（阈值经实际手型校准）
-function fingerExtended(lm, tipIdx, mcpIdx, palmScale) {
-  const dTip = dist(lm[tipIdx], lm[WRIST]) / palmScale;
-  const dMcp = dist(lm[mcpIdx], lm[WRIST]) / palmScale;
-  return dTip - dMcp > 0.4;
+// 关节夹角（在 b 点，0..PI）
+function jointAngle(a, b, c) {
+  const v1x = a.x - b.x, v1y = a.y - b.y, v1z = a.z - b.z;
+  const v2x = c.x - b.x, v2y = c.y - b.y, v2z = c.z - b.z;
+  const n1 = Math.hypot(v1x, v1y, v1z) || 1e-6;
+  const n2 = Math.hypot(v2x, v2y, v2z) || 1e-6;
+  const cos = (v1x * v2x + v1y * v2y + v1z * v2z) / (n1 * n2);
+  return Math.acos(Math.max(-1, Math.min(1, cos)));
+}
+
+// 单指伸展：关节伸直度(指尖-指根 / 两段之和) + PIP关节角 + 相对掌宽的指尖外伸量，三者综合。
+// 全部用相对几何量，天然兼容左右手、手掌远近与旋转、摄像头镜像。
+function fingerExtended(lm, mcpIdx, pipIdx, tipIdx, palmScale, loose = false) {
+  const mcp = lm[mcpIdx], pip = lm[pipIdx], tip = lm[tipIdx];
+  const straight = dist(tip, mcp) / (dist(mcp, pip) + dist(pip, tip) + 1e-6);
+  const angle = jointAngle(mcp, pip, tip);
+  const reach = (dist(tip, lm[WRIST]) - dist(mcp, lm[WRIST])) / palmScale;
+  const sTh = loose ? 0.6 : 0.8;
+  const aTh = loose ? 1.5 : 2.2;
+  const rTh = loose ? 0.12 : 0.3;
+  return straight > sTh && angle > aTh && reach > rTh;
+}
+
+// 五根手指独立伸展状态（拇指使用独立关节链）
+export function computeFingerStates(lm) {
+  const none = { thumb: false, index: false, middle: false, ring: false, pinky: false };
+  if (!lm || lm.length < 21) return none;
+  const palmScale = dist(lm[WRIST], lm[9]) || 1e-4;
+  return {
+    thumb: fingerExtended(lm, THUMB_MCP, THUMB_IP, THUMB_TIP, palmScale, true),
+    index: fingerExtended(lm, 5, 6, 8, palmScale),
+    middle: fingerExtended(lm, 9, 10, 12, palmScale),
+    ring: fingerExtended(lm, 13, 14, 16, palmScale),
+    pinky: fingerExtended(lm, 17, 18, 20, palmScale),
+  };
 }
 
 /**
- * 手势 → 颜色映射（用于幻彩模式）：
+ * 手势 → 颜色映射：
  * 五指张开=绿 / 食指+中指=蓝 / 拇指食指捏合=金 / 握拳=红
- * 返回 'green' | 'blue' | 'gold' | 'red' | 'none'
  */
 export function classifyGesture(lm) {
   if (!lm || lm.length < 21) return 'none';
+  const fs = computeFingerStates(lm);
   const palmScale = dist(lm[WRIST], lm[9]) || 1e-4;
-  const idxExt = fingerExtended(lm, 8, 5, palmScale);
-  const midExt = fingerExtended(lm, 12, 9, palmScale);
-  const ringExt = fingerExtended(lm, 16, 13, palmScale);
-  const pinkyExt = fingerExtended(lm, 20, 17, palmScale);
-  const count = (idxExt ? 1 : 0) + (midExt ? 1 : 0) + (ringExt ? 1 : 0) + (pinkyExt ? 1 : 0);
   const pinchD = dist(lm[THUMB_TIP], lm[8]) / palmScale;
+  const count = (fs.index ? 1 : 0) + (fs.middle ? 1 : 0) + (fs.ring ? 1 : 0) + (fs.pinky ? 1 : 0);
 
-  if (count >= 4) return 'green';                                // 五指张开
-  if (idxExt && midExt && !ringExt && !pinkyExt) return 'blue';  // 食指+中指
-  if (pinchD < 0.6 && idxExt && count <= 2) return 'gold';       // 拇指食指捏合
-  if (count <= 0) return 'red';                                  // 握拳
+  if (count >= 4) return 'green';                                     // 五指张开
+  if (fs.index && fs.middle && !fs.ring && !fs.pinky) return 'blue';  // 食指+中指
+  if (pinchD < 0.6 && fs.index && count <= 2) return 'gold';          // 拇指食指捏合
+  if (count === 0) return 'red';                                      // 握拳
   return 'none';
 }
 
 /**
- * 花形手势 → 形状（用于花朵开放时的形态变化，不改原开合/颜色）：
- * V字(食+中分开)=蝶翼 / 仅食指=尖瓣上聚 / 三指=多层 / OK(拇指食指圈+三指伸)=螺旋
+ * 花形手势（六种手势之一，基于五指独立状态 + 指尖距离，严格区分三指/OK、食指/中指）：
  */
 export function classifyShape(lm) {
   if (!lm || lm.length < 21) return 'none';
-  const scale = dist(lm[WRIST], lm[9]) || 1e-4;
-  const idx = fingerExtended(lm, 8, 5, scale);
-  const mid = fingerExtended(lm, 12, 9, scale);
-  const ring = fingerExtended(lm, 16, 13, scale);
-  const pinky = fingerExtended(lm, 20, 17, scale);
-  const pinchD = dist(lm[THUMB_TIP], lm[8]) / scale;   // 拇指-食指指尖距离
-  const pinchClose = pinchD < 0.55;                     // 拇指食指接触
+  const fs = computeFingerStates(lm);
+  const palmScale = dist(lm[WRIST], lm[9]) || 1e-4;
+  const pinchD = dist(lm[THUMB_TIP], lm[8]) / palmScale;   // 拇指-食指指尖距离
+  const pinchClose = pinchD < 0.55;                         // 指尖接触
 
-  // OK：拇指食指指尖接触(捏圈) + 中/无名/小指伸出 —— 用“指尖接触”作为独立几何条件
-  if (pinchClose && mid && ring && pinky) return 'spiral';
-  // 三指：食指+中指+无名指伸出，小指收拢，且拇指食指不接触
-  if (idx && mid && ring && !pinky && !pinchClose) return 'layered';
-  // 仅食指 → 尖瓣百合
-  if (idx && !mid && !ring && !pinky) return 'pointed';
-  // 仅中指 → 蝶翼花
-  if (!idx && mid && !ring && !pinky) return 'butterfly';
+  // OK：拇指食指指尖接触 + 中/无名/小指伸出（小指伸展是区别于三指的关键）
+  if (pinchClose && fs.middle && fs.ring && fs.pinky) return 'spiral';
+  // 重瓣菊花：食+中+无名伸出、小指收拢、拇指食指不接触
+  if (fs.index && fs.middle && fs.ring && !fs.pinky && !pinchClose) return 'layered';
+  // 尖瓣百合：仅食指
+  if (fs.index && !fs.middle && !fs.ring && !fs.pinky) return 'pointed';
+  // 蝶翼花：仅中指
+  if (!fs.index && fs.middle && !fs.ring && !fs.pinky) return 'butterfly';
   return 'none';
 }
 

@@ -1,6 +1,6 @@
 // MediaPipe HandLandmarker 封装 + 摄像头采集。
 import { state } from './state.js';
-import { computeOpenness, computePinch, palmCenter, smoothLandmarks, labelFor, classifyGesture, classifyShape, SignalSmoother } from './gestureMath.js';
+import { computeOpenness, computePinch, computeFingerStates, palmCenter, smoothLandmarks, labelFor, classifyGesture, classifyShape, SignalSmoother } from './gestureMath.js';
 
 // 资源基址用 import.meta.url 解析：兼容本地 localhost 与 GitHub Pages 子路径部署
 const WASM_BASE = new URL('../assets/wasm/', import.meta.url).href;
@@ -22,6 +22,7 @@ export function createGestureController(videoEl) {
   let shapeCooldownUntil = 0;
 
   async function doInit() {
+    const t0 = performance.now();
     const { FilesetResolver, HandLandmarker } = await import(new URL('../assets/vision_bundle.mjs', import.meta.url).href);
     const vision = await FilesetResolver.forVisionTasks(WASM_BASE);
     const opts = {
@@ -43,10 +44,14 @@ export function createGestureController(videoEl) {
       });
     }
     ready = true;
+    state.set({ recogTime: Math.round((performance.now() - t0)) / 1000 });
   }
 
+  // 模型只初始化一次；失败后清空缓存以支持重试
   function init() {
-    if (!initPromise) initPromise = doInit();
+    if (!initPromise) {
+      initPromise = doInit().catch((e) => { initPromise = null; throw e; });
+    }
     return initPromise;
   }
 
@@ -123,9 +128,12 @@ export function createGestureController(videoEl) {
         landmarkCount: smoothed.length,
         gestureRaw: g,
         shapeRaw: sh,
+        fingerStates: computeFingerStates(smoothed),
+        handConfidence: (res.handednesses && res.handednesses[0] && res.handednesses[0][0])
+          ? res.handednesses[0][0].score : 0,
       });
     } else {
-      state.set({ handActive: false, gestureLabel: '未检测到手', shapeTarget: 'none', landmarkCount: 0, gestureRaw: 'none', shapeRaw: 'none' });
+      state.set({ handActive: false, gestureLabel: '未检测到手', shapeTarget: 'none', landmarkCount: 0, gestureRaw: 'none', shapeRaw: 'none', fingerStates: null, handConfidence: 0 });
     }
   }
 
