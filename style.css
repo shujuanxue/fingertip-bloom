@@ -1,0 +1,149 @@
+:root {
+  --pink: #ff4d7d;
+  --pink-soft: #ffb3c6;
+  --gold: #ffd98a;
+  --violet: #b08cff;
+  --bg: #0a0508;
+  --glass: rgba(20, 12, 18, 0.55);
+  --glass-border: rgba(255, 179, 198, 0.18);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: #f5e9ee;
+  font-family: "PingFang SC", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#scene-root { position: fixed; inset: 0; z-index: 0; }
+#scene-root canvas { display: block; }
+
+/* ---------- 通用视图层 ---------- */
+.view {
+  position: fixed; inset: 0; z-index: 10;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.view button, .view input, .view label { pointer-events: auto; }
+.hidden { display: none !important; }
+
+/* ---------- 首页 ---------- */
+.home-inner { text-align: center; padding: 0 24px; }
+.home-sub {
+  font-size: 14px; letter-spacing: 0.55em; text-indent: 0.55em;
+  color: var(--pink-soft); opacity: 0.85; margin-bottom: 18px;
+}
+.home-title {
+  font-size: clamp(48px, 10vw, 110px); font-weight: 700; line-height: 1.1;
+  letter-spacing: 0.12em; text-indent: 0.12em;
+  background: linear-gradient(120deg, #ffd9e2 0%, #ff7ea8 35%, #ff4d7d 60%, #ffd98a 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 0 22px rgba(255, 77, 125, 0.35));
+  margin-bottom: 26px;
+}
+.home-tag {
+  font-size: clamp(14px, 2.4vw, 19px); color: rgba(245, 233, 238, 0.75);
+  letter-spacing: 0.28em; text-indent: 0.28em; margin-bottom: 54px;
+}
+.home-hint {
+  position: absolute; bottom: 34px; font-size: 12.5px; letter-spacing: 0.14em;
+  color: rgba(245, 233, 238, 0.45);
+}
+
+.btn-primary {
+  position: relative; cursor: pointer;
+  padding: 15px 46px; font-size: 16px; letter-spacing: 0.34em; text-indent: 0.34em;
+  color: #fff; border: none; border-radius: 999px;
+  background: linear-gradient(120deg, #ff4d7d, #ff7ea8 55%, #ffb36b);
+  box-shadow: 0 0 30px rgba(255, 77, 125, 0.45), 0 4px 18px rgba(0, 0, 0, 0.4);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.btn-primary:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 0 44px rgba(255, 77, 125, 0.65); }
+.btn-primary:active { transform: translateY(0) scale(0.98); }
+
+.btn-ghost {
+  cursor: pointer; margin-top: 22px; padding: 12px 34px; font-size: 14px;
+  letter-spacing: 0.24em; text-indent: 0.24em; color: var(--pink-soft);
+  background: transparent; border: 1px solid var(--glass-border); border-radius: 999px;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+.btn-ghost:hover { background: rgba(255, 77, 125, 0.12); color: #fff; }
+
+/* ---------- 主交互页 HUD ---------- */
+.hud-top {
+  position: absolute; top: 22px; left: 26px; right: 26px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 13px; letter-spacing: 0.18em; pointer-events: none;
+}
+.brand { color: rgba(245, 233, 238, 0.85); font-weight: 600; text-shadow: 0 0 12px rgba(255, 77, 125, 0.5); }
+.status { color: rgba(255, 214, 224, 0.96); font-size: 13px; text-shadow: 0 0 8px rgba(255,77,125,0.5); }
+
+/* ---------- 摄像头窗口 ---------- */
+.camera-wrap {
+  position: absolute; right: 22px; bottom: 92px;
+  width: min(200px, 26vw); aspect-ratio: 4 / 3;
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: #050307;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+#camera-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+#camera-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scaleX(-1); }
+.camera-label {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 6px 10px;
+  display: flex; justify-content: space-between;
+  font-size: 11px; letter-spacing: 0.08em;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+  color: rgba(255, 255, 255, 0.92);
+}
+#gesture-label { color: var(--pink-soft); }
+#bloom-value { color: var(--gold); }
+
+/* ---------- 底部控制栏 ---------- */
+.control-bar {
+  position: absolute; left: 50%; transform: translateX(-50%); bottom: 22px;
+  display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center;
+  padding: 10px 14px; border-radius: 999px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+}
+.ctrl {
+  cursor: pointer; font-size: 12.5px; letter-spacing: 0.06em;
+  color: #f5e9ee; background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px;
+  padding: 8px 14px; white-space: nowrap;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+.ctrl:hover { background: rgba(255, 77, 125, 0.16); border-color: rgba(255, 77, 125, 0.45); }
+.ctrl.active { background: rgba(255, 77, 125, 0.28); border-color: var(--pink); color: #fff; }
+.ctrl input[type="range"] { width: 74px; vertical-align: middle; accent-color: var(--pink); cursor: pointer; }
+
+/* ---------- 结束页 ---------- */
+.end-inner { text-align: center; padding: 0 24px; }
+.end-line {
+  font-size: clamp(22px, 5vw, 42px); letter-spacing: 0.3em; text-indent: 0.3em;
+  color: #fff; margin-bottom: 44px;
+  text-shadow: 0 0 26px rgba(255, 77, 125, 0.6);
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%);
+  z-index: 40; padding: 10px 22px; border-radius: 999px; font-size: 13px;
+  background: var(--glass); border: 1px solid var(--glass-border);
+  color: #fff; letter-spacing: 0.08em; backdrop-filter: blur(10px);
+  transition: opacity 0.3s ease; pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .control-bar { bottom: 12px; gap: 6px; padding: 8px 10px; }
+  .ctrl { padding: 7px 10px; font-size: 11.5px; }
+  .camera-wrap { width: 34vw; right: 12px; bottom: 78px; }
+  .hud-top { top: 12px; left: 14px; right: 14px; }
+}
