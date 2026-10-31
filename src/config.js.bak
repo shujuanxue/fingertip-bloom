@@ -1,0 +1,45 @@
+// 集中参数配置：所有可调项都在这里，便于调参。
+export const CONFIG = {
+  // ---- 花朵形态 ----
+  particleCount: 22000,        // 桌面基准粒子总数（按设备动态缩放）
+  minParticleCount: 6000,      // 低端下限
+  maxParticleCount: 34000,     // 高端上限
+  petalCount: 14,              // 花瓣数量
+  petalLayers: 2,              // 花瓣层数（内层 + 外层）
+  flowerRadius: 6.4,           // 盛放时的花朵半径（世界单位）
+  coreRadius: 1.0,             // 中心光核半径（缩小，避免中心过曝）
+  budScale: 0.16,              // 花苞时径向收缩比例
+  budElongateY: 1.9,           // 花苞时竖向拉长倍数（竖向椭圆）
+
+  // ---- 色彩（据参考视频：红粉为主、金色点缀）----
+  palette: {
+    core: [1.0, 0.92, 0.62],        // 暖金/淡黄光核
+    innerPetal: [1.0, 0.36, 0.52],  // 玫瑰红
+    outerPetal: [1.0, 0.62, 0.74],  // 樱花粉
+    edge: [1.0, 0.80, 0.86],        // 花瓣边缘亮粉
+    accent: [0.72, 0.40, 1.0],      // 少量淡紫点缀
+    gold: [1.0, 0.78, 0.42],        // 金色能量粒子
+  },
+
+  // ---- 手势 ----
+  smoothing: 0.22,             // 开合值 EMA 平滑系数（越小越平滑）
+  landmarkSmoothing: 0.45,     // 关键点平滑系数
+  hysteresis: 0.02,            // 迟滞带
+  confirmFrames: 3,            // 手势切换需连续确认帧数
+  specialHoldTime: 1.2,        // 触发特殊盛放需持续张开秒数
+
+  // ---- 渲染 ----
+  targetFPS: 60,
+  maxPixelRatio: 2.0,          // devicePixelRatio 上限（移动端降耗）
+  pointScaleFactor: 0.7,       // 粒子尺寸整体缩放（更小更锐利，突出花瓣结构）
+  bloomStrength: 0.35,         // UnrealBloom 强度（进一步调低，避免泛白）
+  bloomRadius: 0.5,
+  bloomThreshold: 0.5,         // 更高阈值：只让最亮粒子发光，保留花瓣轮廓
+
+  // ---- 力场 ----
+  handForceRadius: 2.6,        // 手部位置作用半径（世界单位）
+  handForceStrength: 1.4,      // 局部吸引/排斥强度
+
+  // ---- 星尘背景 ----
+  starCount: 260,
+};

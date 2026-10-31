@@ -1,0 +1,152 @@
+// 花朵形态生成：产出每个粒子的「花苞位 aStart」与「盛放位 aEnd」及属性数组。
+// 三层结构：光核(8%) + 内层花瓣(40%) + 外层花瓣(40%) + 外围能量(12%)。
+import { CONFIG } from './config.js';
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const rand = mulberry32(0x1337);
+const range = (min, max) => min + rand() * (max - min);
+
+function setColor(arr, i, r, g, b) {
+  arr[i * 3] = r; arr[i * 3 + 1] = g; arr[i * 3 + 2] = b;
+}
+
+// 在两色之间插值 + 轻微随机，得到丰富而统一的渐变
+function pickColor(a, b, jitter = 0.12) {
+  const t = rand();
+  let r = a[0] + (b[0] - a[0]) * t + range(-jitter, jitter);
+  let g = a[1] + (b[1] - a[1]) * t + range(-jitter, jitter);
+  let bl = a[2] + (b[2] - a[2]) * t + range(-jitter, jitter);
+  return [Math.max(0, r), Math.max(0, g), Math.max(0, bl)];
+}
+
+export function buildFlowerData(count = CONFIG.particleCount) {
+  const { petalCount, flowerRadius, coreRadius, budScale, budElongateY, palette } = CONFIG;
+  const N = count;
+
+  const aStart = new Float32Array(N * 3);
+  const aEnd = new Float32Array(N * 3);
+  const aPhase = new Float32Array(N);
+  const aSize = new Float32Array(N);
+  const aColor = new Float32Array(N * 3);
+  const aSeed = new Float32Array(N);
+  const aLayer = new Float32Array(N);
+
+  const putStart = (i, x, y, z) => { aStart[i * 3] = x; aStart[i * 3 + 1] = y; aStart[i * 3 + 2] = z; };
+  const putEnd = (i, x, y, z) => { aEnd[i * 3] = x; aEnd[i * 3 + 1] = y; aEnd[i * 3 + 2] = z; };
+
+  // 由盛放位反推花苞位：径向收缩 + 竖向拉长，形成竖向椭圆
+  const putBud = (i, x, y, z) => {
+    const len = Math.hypot(x, y, z) || 0.001;
+    const nx = x / len, ny = y / len, nz = z / len;
+    const r = coreRadius * 0.35 + len * budScale;
+    putStart(i, nx * r * 0.6, ny * r * budElongateY, nz * r * 0.4);
+  };
+
+  let i = 0;
+
+  // ---- 光核（暖金/淡黄，中心）----
+  const coreCount = Math.floor(N * 0.05);
+  for (let k = 0; k < coreCount; k++, i++) {
+    const r = Math.sqrt(rand()) * coreRadius;
+    const ang = rand() * Math.PI * 2;
+    const x = Math.cos(ang) * r;
+    const y = Math.sin(ang) * r * 0.9;
+    const z = range(-0.45, 0.45);
+    putStart(i, x * 0.5, y * 0.5, z * 0.4);
+    putEnd(i, x, y, z);
+    aPhase[i] = rand() * 0.12;
+    aSize[i] = range(0.04, 0.08);
+    const c = pickColor(palette.core, palette.gold);
+    setColor(aColor, i, c[0], c[1], c[2]);
+    aSeed[i] = rand();
+    aLayer[i] = 0;
+  }
+
+  // ---- 内层花瓣（紧密、较高密度、较短）----
+  const innerCount = Math.floor(N * 0.40);
+  for (let k = 0; k < innerCount; k++, i++) {
+    const pi = Math.floor(rand() * petalCount);
+    const baseAng = (pi / petalCount) * Math.PI * 2;
+    const t = Math.pow(rand(), 0.55);
+    const s = rand() * 2 - 1;
+    const len = flowerRadius * 0.58 * range(0.85, 1.15);
+    const radius = coreRadius * 0.8 + t * len;
+    // 叶形花瓣：角宽按 sin(π·t) 变化（根窄→中宽→尖窄），形成清晰花瓣轮廓与间隙
+    const wProfile = Math.sin(Math.PI * Math.min(t, 1.0));
+    const ang = baseAng + s * 0.13 * wProfile;
+    const curl = 0.55 * Math.sin(Math.PI * t) * (1 - Math.abs(s) * 0.5);
+    const x = Math.cos(ang) * radius;
+    const y = Math.sin(ang) * radius * 0.92;
+    const z = curl * range(0.7, 1.3);
+    putBud(i, x, y, z);
+    putEnd(i, x, y, z);
+    aPhase[i] = range(0.05, 0.4);
+    aSize[i] = range(0.035, 0.085);
+    const c = pickColor(palette.innerPetal, palette.outerPetal);
+    setColor(aColor, i, c[0], c[1], c[2]);
+    aSeed[i] = rand();
+    aLayer[i] = 1;
+  }
+
+  // ---- 外层花瓣（放射状、更长、更卷曲、边缘细密）----
+  const outerCount = Math.floor(N * 0.40);
+  for (let k = 0; k < outerCount; k++, i++) {
+    const pi = Math.floor(rand() * petalCount);
+    const baseAng = (pi / petalCount) * Math.PI * 2 + range(-0.05, 0.05);
+    const t = Math.pow(rand(), 0.5);
+    const s = rand() * 2 - 1;
+    const len = flowerRadius * range(0.95, 1.28);
+    const radius = coreRadius * 0.6 + t * len;
+    const wProfile = Math.sin(Math.PI * Math.min(t, 1.0));
+    const ang = baseAng + s * 0.16 * wProfile + s * 0.03;
+    const curl = 0.9 * Math.sin(Math.PI * t) * (1 - Math.abs(s) * 0.45);
+    const x = Math.cos(ang) * radius;
+    const y = Math.sin(ang) * radius * 0.9;
+    const z = curl * range(0.6, 1.6);
+    putBud(i, x, y, z);
+    putEnd(i, x, y, z);
+    aPhase[i] = range(0.3, 0.7);
+    aSize[i] = range(0.03, 0.075);
+    // 边缘更亮、偶发金色花瓣
+    let c;
+    const r = rand();
+    if (Math.abs(s) > 0.72) c = pickColor(palette.edge, palette.outerPetal, 0.05);
+    else if (r < 0.025) c = palette.gold;
+    else c = pickColor(palette.outerPetal, palette.accent);
+    setColor(aColor, i, c[0], c[1], c[2]);
+    aSeed[i] = rand();
+    aLayer[i] = 2;
+  }
+
+  // ---- 外围能量粒子（星云飘散，随绽放向外扩散）----
+  const energyCount = N - i;
+  for (let k = 0; k < energyCount; k++, i++) {
+    const ang = rand() * Math.PI * 2;
+    const e = (rand() - 0.5) * 0.9;
+    const r = flowerRadius * range(1.15, 2.4);
+    const x = Math.cos(ang) * r;
+    const y = Math.sin(ang) * r * 0.85;
+    const z = e * flowerRadius * 0.7;
+    putStart(i, Math.cos(ang) * coreRadius * 0.5, Math.sin(ang) * coreRadius * 0.5, e * 0.4);
+    putEnd(i, x, y, z);
+    aPhase[i] = range(0.6, 1.0);
+    aSize[i] = range(0.02, 0.08);
+    const rr = rand();
+    const c = rr < 0.3 ? palette.gold : (rr < 0.6 ? pickColor(palette.accent, palette.outerPetal) : pickColor(palette.outerPetal, palette.edge, 0.2));
+    setColor(aColor, i, c[0], c[1], c[2]);
+    aSeed[i] = rand();
+    aLayer[i] = 3;
+  }
+
+  return { aStart, aEnd, aPhase, aSize, aColor, aSeed, aLayer, count: i };
+}
